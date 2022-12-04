@@ -1,5 +1,7 @@
 # AOC 2022 in Clojure
 
+Repo structure stolen from https://github.com/chrisetheridge
+
 Uses [babashka](https://github.com/babashka/babashka) to run everything.
 
 For a repl:
