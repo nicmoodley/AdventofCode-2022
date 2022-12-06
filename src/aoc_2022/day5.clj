@@ -46,3 +46,7 @@
        vals
        (map first)
        (apply str)))
+
+(defn run []
+  (println "Part 1:" (part-one))
+  (println "Part 2:" (part-two)))
