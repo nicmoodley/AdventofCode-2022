@@ -15,41 +15,50 @@
 (defn do-ls [dir-tree ls-info]
   (if (string/starts-with? ls-info "dir")
     (let [dir-name (second (string/split ls-info #" "))]
-      (walk/postwalk (fn [node] (if (map? node)
-                                (if (true? (:active? node))
-                                  #_(update node :items (comp vec (partial cons {:name dir-name :items [] :size false :active? false})))
-                                  (update node :items (comp vec (partial concat [{:name dir-name :items [] :size false :active? false}])))
-                                  node)
-                                node))
-                    dir-tree))
+      (walk/postwalk
+       (fn [node] (if (map? node)
+                   (if (true? (:active? node))
+                     (update node :items (comp vec (partial concat [{:name dir-name
+                                                            :items []
+                                                            :size false
+                                                            :active? false}])))
+                     node)
+                   node))
+       dir-tree))
     (let [[size name] (string/split ls-info #" ")]
-      (walk/postwalk (fn [node] (if (map? node)
-                                (if (true? (:active? node))
-                                  (update node :items (comp vec (partial concat [{:name name :items nil :size (parse-long size) :active? false}])))
-                                  node)
-                                node))
-                    dir-tree))))
+      (walk/postwalk
+       (fn [node] (if (map? node)
+                   (if (true? (:active? node))
+                     (update node :items (comp vec (partial concat [{:name name
+                                                            :items nil
+                                                            :size (parse-long size)
+                                                            :active? false}])))
+                     node)
+                   node))
+       dir-tree))))
 
 (defn do-cd [dir-tree cd-info]
   (let [[_ _ cd-location] (string/split cd-info #" ")]
     (if (= ".." cd-location)
-      (walk/prewalk (fn [node] (if (and (map? node) (vector? (:items node))
-                                       (some #(true? (:active? %)) (:items node)))
-                               (-> (update node :items (partial mapv #(assoc % :active? false)))
-                                   (assoc :active? true))
-                               node))
-                    dir-tree)
-      (walk/postwalk (fn [node] (if (and (map? node) (true? (:active? node))
-                                       (some #(= cd-location (:name %)) (:items node)))
-                                (->> (assoc node :active? false)
-                                     (#(for [i (range (count (:items %)))
-                                           :let [item (nth (:items %) i)]
-                                           :when (and (= cd-location (:name item))
-                                                      (some? (:items item)))]
-                                       (assoc-in % [:items i :active?] true)))
-                                     first) ; for wraps in list, don't want that
-                                node))
-                    dir-tree))))
+      (walk/prewalk ; ordering dictates prewalk!
+       (fn [node] (if (and (map? node) (vector? (:items node))
+                          (some #(true? (:active? %)) (:items node)))
+                   (-> (update node :items (partial mapv #(assoc % :active? false)))
+                       (assoc :active? true))
+                   node))
+       dir-tree)
+      (walk/postwalk
+       (fn [node] (if (and (map? node) (true? (:active? node))
+                          (some #(= cd-location (:name %)) (:items node)))
+                   (->> (assoc node :active? false)
+                        (#(for [i (range (count (:items %)))
+                                :let [item (nth (:items %) i)]
+                                :when (and (= cd-location (:name item))
+                                           (some? (:items item)))]
+                            (assoc-in % [:items i :active?] true)))
+                        first) ; for wraps in list, don't want that
+                   node))
+       dir-tree))))
 
 (defn do-line [dir-tree s]
   (let [line-type (categorise-line s)]
